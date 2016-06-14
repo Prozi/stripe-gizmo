@@ -2,6 +2,6 @@
 
 module.exports = (app) => {
 
-	console.log('has stripe');
+	console.log('almost has stripe');
 
 };

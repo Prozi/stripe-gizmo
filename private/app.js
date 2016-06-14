@@ -9,8 +9,8 @@ const bodyParser   = require('body-parser');
 const compression  = require('compression');
 const swig         = require('swig');
 
-const routes = require('./routes/index');
-const users  = require('./routes/users');
+const routes = require('./routes');
+const orders = require('./routes/api');
 
 const app = express();
 
@@ -28,8 +28,8 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(compression());
 
-app.use('/', routes);
-app.use('/users', users);
+app.use('/'   , routes);
+app.use('/api', orders);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
@@ -63,5 +63,6 @@ app.use((err, req, res, next) => {
 });
 
 require('./stripe')(app);
+require('./firebase')(app);
 
 module.exports = app;
