@@ -62,5 +62,6 @@ app.use((err, req, res, next) => {
   });
 });
 
+require('./stripe')(app);
 
 module.exports = app;
