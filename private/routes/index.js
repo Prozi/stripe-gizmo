@@ -1,5 +1,8 @@
+'use strict';
+
 const fs      = require('fs');
 const express = require('express');
+const request = require('request');
 const path    = require('path');
 const router  = express.Router();
 
@@ -15,8 +18,19 @@ fs.exists(orderPath, (exists) => {
   }
 });
 
+router.get('/putorder', (req, res, next) => {
+  request.post({
+    url  : 'http://localhost:3000/api/orders',
+    json : true,
+    body : {
+      order: order
+    }
+  }, (data) => {});
+  res.send('ok');
+});
+
 /* GET home page. */
-router.get('/', function(req, res, next) {
+router.get('/', (req, res, next) => {
   res.render('index', { 
   	title: 'Stripe Gizmo', 
   	order: JSON.stringify(order, null, 2) 
