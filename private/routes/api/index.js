@@ -38,6 +38,91 @@ function onError() {
   console.error(errorMessage);
 }
 
+class Order {
+  constructor (id, value, database) {
+    this.id = id;
+    this.database = database;
+    this.setPayment(value.payment);
+    this.setProduct(value.product);
+    this.setCustomer(value.customer);
+    this.onInit();
+  }
+  setCustomer(customer) {
+    this.customer = {
+      id     : customer.id,
+      email  : customer.email,
+      metadata: {
+        name : customer.name
+      }
+    };
+  }
+  setPayment(payment) {
+    const split = payment.details.expiry.split('/');
+    this.payment = {
+      object    : 'card',
+      exp_month : split[0],
+      exp_year  : split[1],
+      number    : payment.details.number,
+      cvc       : payment.details.cvc
+    };
+  }
+  setProduct(product) {
+    this.product = product;
+  }
+  onInit () {
+    console.log('loaded order', this.id);
+    this.createStripeCustomer();
+    this.createStripePayment();
+    this.createStripeCharge();
+  }
+  createStripeCustomer () {
+    stripe.customers.retrieve(this.customer.id, (err, customer) => {
+      if (err) {
+        // not found - create
+        stripe.customers.create(this.customer).then((customer) => {
+          console.log('created customer', this.customer.id);
+        }).catch((err) => {
+          console.log(err);
+        });
+      } else {
+        // copy
+        let update = JSON.parse(JSON.stringify(this.customer));
+        // without id
+        delete update.id;
+        // update
+        stripe.customers.update(this.customer.id, update).then((customer) => {
+          console.log('updated customer', this.customer.id);
+        }).catch((err) => {
+          console.log(err);
+        });
+      }
+    });
+  }
+  createStripePayment () {
+    stripe.customers.createSource(this.customer.id, { 
+      source: this.payment 
+    }).then((payment) => {
+      console.log('created payment for', this.customer.id);
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+  createStripeCharge () {
+    this.charge = {
+      amount   : parseFloat(this.product.price) * 100,
+      currency : 'gbp',
+      customer : this.customer.id
+    }
+    stripe.charges.create(this.charge).then((charge) => {
+      console.log('created charge for', this.customer.id);
+      this.database.ref(`/orders/${this.id}/charge_id`).set(charge.id);
+      console.log('charge id stored in firebase');
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+}
+
 function onSuccess() {
 
   const creditentials = require(path.join(__dirname, '..', '..', '..', creditentialsPath));
@@ -50,7 +135,7 @@ function onSuccess() {
   const database = firebase.database();
 
   database.ref('/orders').on('child_added', function(snapshot) {
-    console.log(snapshot.key, snapshot.val());
+    new Order(snapshot.key, snapshot.val(), database);
   });
 
   // get stats
@@ -75,23 +160,5 @@ function onSuccess() {
   console.info(successMessage);
 
 }
-
-/*
-  test stripe as module
-
-  stripe.customers.create({
-    email: 'welcome@example.com'
-  }).then(function(customer) {
-    return stripe.charges.create({
-      amount: 1600,
-      currency: 'usd',
-      customer: customer.id
-    });
-  }).then(function(charge) {
-    // New charge created on a new customer
-  }).catch(function(err) {
-    // Deal with an error
-  });
-*/
 
 module.exports = router;
