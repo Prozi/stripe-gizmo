@@ -8,6 +8,9 @@ const fs       = require('fs');
 const express  = require('express');
 const router   = express.Router();
 
+// get stripe as module
+const stripe   = require(path.join(__dirname, '..', '..', 'stripe'));
+
 const creditentialsPath = 'firebase.creditentials.json';
 const where             = `inside project root: '${creditentialsPath}'`;
 
@@ -25,15 +28,19 @@ const successMessage = `
 
 fs.exists(creditentialsPath, (exists) => {
     if (exists) {
-      initFirebase();
+      onSuccess();
     } else {
-      console.error(errorMessage);        
+      onError();
     }
 });
 
-function initFirebase() {
+function onError() {
+  console.error(errorMessage);
+}
 
-  const creditentials = require(path.join(__dirname, '..', '..', creditentialsPath));
+function onSuccess() {
+
+  const creditentials = require(path.join(__dirname, '..', '..', '..', creditentialsPath));
 
   firebase.initializeApp({
     serviceAccount: creditentialsPath,
@@ -41,6 +48,10 @@ function initFirebase() {
   });
 
   const database = firebase.database();
+
+  database.ref('/orders').on('child_added', function(snapshot) {
+    console.log(snapshot.key, snapshot.val());
+  });
 
   // get stats
   router.get('/orders', (req, res) => {
@@ -64,5 +75,23 @@ function initFirebase() {
   console.info(successMessage);
 
 }
+
+/*
+  test stripe as module
+
+  stripe.customers.create({
+    email: 'welcome@example.com'
+  }).then(function(customer) {
+    return stripe.charges.create({
+      amount: 1600,
+      currency: 'usd',
+      customer: customer.id
+    });
+  }).then(function(charge) {
+    // New charge created on a new customer
+  }).catch(function(err) {
+    // Deal with an error
+  });
+*/
 
 module.exports = router;

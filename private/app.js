@@ -9,10 +9,8 @@ const bodyParser   = require('body-parser');
 const compression  = require('compression');
 const swig         = require('swig');
 
-const stripe   = require('./stripe');
-const firebase = require('./firebase');
-
 const routes = require('./routes');
+const api    = require('./routes/api');
 
 const app = express();
 
@@ -31,11 +29,8 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.use(compression());
 
-app.use(stripe);
-app.use(firebase);
-
 app.use('/'   , routes);
-app.use('/api', firebase);
+app.use('/api', api);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
