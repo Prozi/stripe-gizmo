@@ -81,33 +81,16 @@ class Order {
     this.createStripeCustomer();
   }
   createStripeCustomer () {
-    stripe.customers.retrieve(this.customer.id, (err, customer) => {
-      if (err) {
-        // not found - create
-        stripe.customers.create(this.customer).then((customer) => {
-          this.customer.id = customer.id;
-          this.database.ref(`/orders/${this.id}/stripe_customer_id`).set(customer.id);
-          console.log('order', this.id, 'created customer', this.customer.id);
-          this.createStripePayment();
-        }).catch((err) => {
-          console.log('createStripeCustomer create', err);
-        });
-      } else {
-        // copy
-        let update = JSON.parse(JSON.stringify(this.customer));
-        // without id
-        delete update.id;
-        // update
-        stripe.customers.update(this.customer.id, update).then((customer) => {
-          this.customer.id = customer.id;
-          this.database.ref(`/orders/${this.id}/stripe_customer_id`).set(customer.id);
-          console.log('order', this.id, 'updated customer', this.customer.id);
-          this.createStripePayment();
-        }).catch((err) => {
-          console.log('createStripeCustomer update', err);
-        });
-      }
-    });
+    if (!this.customer.id) {
+      stripe.customers.create(this.customer).then((customer) => {
+        this.customer.id = customer.id;
+        this.database.ref(`/orders/${this.id}/stripe_customer_id`).set(customer.id);
+        console.log('order', this.id, 'created customer', this.customer.id);
+        this.createStripePayment();
+      }).catch((err) => {
+        console.log('createStripeCustomer create', err);
+      });
+    }
   }
   createStripePayment () {
     stripe.customers.createSource(this.customer.id, { 
