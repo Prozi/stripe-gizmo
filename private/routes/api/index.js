@@ -42,23 +42,26 @@ class Order {
   constructor (id, value, database) {
     this.id = id;
     this.database = database;
-    if (!value.charge_id) {
+    if (!value.stripe_charge_id) {
       this.setPayment(value.payment);
       this.setProduct(value.product);
       this.setCustomer(value.customer);
+      this.setCustomerId(value.stripe_customer_id);
       this.onInit();
     } else {
-      console.log('order', this.id, 'has charge id', value.charge_id);
+      console.log('order', this.id, 'has charge id', value.stripe_charge_id);
     }
   }
   setCustomer(customer) {
     this.customer = {
-      id     : customer.id,
       email  : customer.email,
       metadata: {
         name : customer.name
       }
     };
+  }
+  setCustomerId(customerId) {
+    this.customer.id = customerId;
   }
   setPayment(payment) {
     const split = payment.details.expiry.split('/');
@@ -76,17 +79,18 @@ class Order {
   onInit () {
     console.log('loaded order', this.id);
     this.createStripeCustomer();
-    this.createStripePayment();
-    this.createStripeCharge();
   }
   createStripeCustomer () {
     stripe.customers.retrieve(this.customer.id, (err, customer) => {
       if (err) {
         // not found - create
         stripe.customers.create(this.customer).then((customer) => {
+          this.customer.id = customer.id;
+          this.database.ref(`/orders/${this.id}/stripe_customer_id`).set(customer.id);
           console.log('order', this.id, 'created customer', this.customer.id);
+          this.createStripePayment();
         }).catch((err) => {
-          console.log(err);
+          console.log('createStripeCustomer create', err);
         });
       } else {
         // copy
@@ -95,9 +99,12 @@ class Order {
         delete update.id;
         // update
         stripe.customers.update(this.customer.id, update).then((customer) => {
+          this.customer.id = customer.id;
+          this.database.ref(`/orders/${this.id}/stripe_customer_id`).set(customer.id);
           console.log('order', this.id, 'updated customer', this.customer.id);
+          this.createStripePayment();
         }).catch((err) => {
-          console.log(err);
+          console.log('createStripeCustomer update', err);
         });
       }
     });
@@ -107,8 +114,9 @@ class Order {
       source: this.payment 
     }).then((payment) => {
       console.log('order', this.id, 'created payment for', this.customer.id);
+      this.createStripeCharge();
     }).catch((err) => {
-      console.log(err);
+      console.log('createStripePayment create', err);
     });
   }
   createStripeCharge () {
@@ -119,10 +127,10 @@ class Order {
     }
     stripe.charges.create(this.charge).then((charge) => {
       console.log('order', this.id, 'created charge for', this.customer.id);
-      this.database.ref(`/orders/${this.id}/charge_id`).set(charge.id);
+      this.database.ref(`/orders/${this.id}/stripe_charge_id`).set(charge.id);
       console.log('order', this.id, 'charge id stored in firebase');
     }).catch((err) => {
-      console.log(err);
+      console.log('createStripeCharge create', err);
     });
   }
 }
