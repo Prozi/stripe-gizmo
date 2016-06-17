@@ -42,10 +42,14 @@ class Order {
   constructor (id, value, database) {
     this.id = id;
     this.database = database;
-    this.setPayment(value.payment);
-    this.setProduct(value.product);
-    this.setCustomer(value.customer);
-    this.onInit();
+    if (!value.charge_id) {
+      this.setPayment(value.payment);
+      this.setProduct(value.product);
+      this.setCustomer(value.customer);
+      this.onInit();
+    } else {
+      console.log('order', this.id, 'has charge id', value.charge_id);
+    }
   }
   setCustomer(customer) {
     this.customer = {
@@ -80,7 +84,7 @@ class Order {
       if (err) {
         // not found - create
         stripe.customers.create(this.customer).then((customer) => {
-          console.log('created customer', this.customer.id);
+          console.log('order', this.id, 'created customer', this.customer.id);
         }).catch((err) => {
           console.log(err);
         });
@@ -91,7 +95,7 @@ class Order {
         delete update.id;
         // update
         stripe.customers.update(this.customer.id, update).then((customer) => {
-          console.log('updated customer', this.customer.id);
+          console.log('order', this.id, 'updated customer', this.customer.id);
         }).catch((err) => {
           console.log(err);
         });
@@ -102,7 +106,7 @@ class Order {
     stripe.customers.createSource(this.customer.id, { 
       source: this.payment 
     }).then((payment) => {
-      console.log('created payment for', this.customer.id);
+      console.log('order', this.id, 'created payment for', this.customer.id);
     }).catch((err) => {
       console.log(err);
     });
@@ -114,9 +118,9 @@ class Order {
       customer : this.customer.id
     }
     stripe.charges.create(this.charge).then((charge) => {
-      console.log('created charge for', this.customer.id);
+      console.log('order', this.id, 'created charge for', this.customer.id);
       this.database.ref(`/orders/${this.id}/charge_id`).set(charge.id);
-      console.log('charge id stored in firebase');
+      console.log('order', this.id, 'charge id stored in firebase');
     }).catch((err) => {
       console.log(err);
     });
